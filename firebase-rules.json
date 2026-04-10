@@ -1,8 +1,8 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null",
       "$uid": {
-        ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",
         "status": {
           ".write": "auth != null"
@@ -10,8 +10,9 @@
       }
     },
     "calls": {
+      ".read": "auth != null",
+      ".indexOn": ["calleeId"],
       "$callId": {
-        ".read": "auth != null && (data.child('callerId').val() === auth.uid || data.child('calleeId').val() === auth.uid)",
         ".write": "auth != null"
       }
     },

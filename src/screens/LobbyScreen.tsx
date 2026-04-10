@@ -121,12 +121,17 @@ export default function LobbyScreen({ navigation }: Props) {
     setConnecting(true);
     outgoingCallRefCallsign.current = user.callsign;
 
-    const result = await initiateCall(user.uid, user.callsign, callsign);
+    try {
+      const result = await initiateCall(user.uid, user.callsign, callsign);
 
-    setConnecting(false);
-
-    if (!result.success) {
-      Alert.alert('CONNECTION FAILED', result.error || 'Unable to connect.');
+      if (!result.success) {
+        Alert.alert('CONNECTION FAILED', result.error || 'Unable to connect.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unable to connect.';
+      Alert.alert('CONNECTION FAILED', msg);
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -138,18 +143,27 @@ export default function LobbyScreen({ navigation }: Props) {
     const remoteCallsign = incomingCall.callerCallsign;
     const callId = incomingCall.id;
 
-    await respondToCall(true);
-
-    hasNavigatedRef.current = true;
-    navigation.navigate('Call', {
-      callId,
-      isInitiator: false,
-      remoteCallsign,
-    });
+    try {
+      await respondToCall(true);
+      hasNavigatedRef.current = true;
+      navigation.navigate('Call', {
+        callId,
+        isInitiator: false,
+        remoteCallsign,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to accept call';
+      Alert.alert('CONNECTION ERROR', msg);
+      resetCallState();
+    }
   };
 
   const handleRejectIncoming = async () => {
-    await respondToCall(false);
+    try {
+      await respondToCall(false);
+    } catch {
+      resetCallState();
+    }
   };
 
   const handleSignOut = async () => {

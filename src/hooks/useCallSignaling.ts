@@ -161,10 +161,10 @@ export function useCallSignaling(uid: string | null): UseCallSignalingReturn {
 
       if (accept) {
         setOutgoingCallId(incomingCall.id);
-      } else {
-        setIncomingCall(null);
-        activeCallIdRef.current = null;
+        activeCallIdRef.current = incomingCall.id;
       }
+      // Clear incoming call state in both cases — modal should dismiss
+      setIncomingCall(null);
     },
     [incomingCall, uid, clearCallTimeout],
   );
