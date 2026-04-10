@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "892820160735",
+    "firebase_url": "https://tactical-radio-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "tactical-radio",
+    "storage_bucket": "tactical-radio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:892820160735:android:761a3e0510d3aff904696a",
+        "android_client_info": {
+          "package_name": "com.radio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJZcHG9q9awbs4WPnvWeOGb80oy63nxC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

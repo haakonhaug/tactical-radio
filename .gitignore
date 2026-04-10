@@ -13,5 +13,5 @@ ios/build/
 .env
 *.log
 .DS_Store
-google-services.json
+# google-services.json is intentionally tracked — it's client-side config, not a secret
 .orchestrator-sync.md
