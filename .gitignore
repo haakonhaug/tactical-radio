@@ -1,0 +1,17 @@
+node_modules/
+.gradle/
+build/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+android/app/build/
+android/.gradle/
+ios/Pods/
+ios/build/
+.metro-health-check*
+.env
+*.log
+.DS_Store
+google-services.json
+.orchestrator-sync.md
