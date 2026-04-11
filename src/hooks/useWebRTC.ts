@@ -54,20 +54,48 @@ export function useWebRTC(
       }
       isSettingUpRef.current = true;
 
+      // Buffer ICE candidates that arrive before remote description is set
+      const pendingCandidates: RTCIceCandidateType[] = [];
+      let remoteDescriptionSet = false;
+
       try {
         const service = new WebRTCService();
         webrtcServiceRef.current = service;
 
-        // Initialize audio
         await service.initialize();
         setLocalStream(service.getLocalStream());
 
         const role: SignalingRole = initiator ? 'caller' : 'callee';
 
-        // Create peer connection
+        const applyCandidate = async (candidate: RTCIceCandidateType) => {
+          if (!remoteDescriptionSet) {
+            pendingCandidates.push(candidate);
+            return;
+          }
+          try {
+            await service.addIceCandidate(candidate);
+          } catch (err) {
+            console.warn('addIceCandidate failed', err);
+          }
+        };
+
+        const flushPending = async () => {
+          while (pendingCandidates.length > 0) {
+            const candidate = pendingCandidates.shift()!;
+            try {
+              await service.addIceCandidate(candidate);
+            } catch (err) {
+              console.warn('addIceCandidate (flush) failed', err);
+            }
+          }
+        };
+
+        // Create peer connection (adds local tracks, sets up event handlers)
         const offer = await service.createConnection(initiator, {
           onIceCandidate: (candidate: RTCIceCandidateType) => {
-            signalingService.sendIceCandidate(currentCallId, candidate, role);
+            signalingService
+              .sendIceCandidate(currentCallId, candidate, role)
+              .catch(err => console.warn('sendIceCandidate failed', err));
           },
           onRemoteStream: (stream: MediaStream) => {
             setRemoteStream(stream);
@@ -78,55 +106,54 @@ export function useWebRTC(
         });
 
         if (initiator && offer) {
-          // Caller flow: send offer, then listen for answer + callee ICE candidates
-          await signalingService.sendOffer(currentCallId, offer);
-
+          // CALLER: subscribe FIRST, then send offer (avoid race)
           signalingUnsubRef.current = signalingService.subscribeToSignaling(
             currentCallId,
             'caller',
             {
               onAnswer: async answer => {
+                if (remoteDescriptionSet) {
+                  return;
+                }
                 try {
                   await service.setRemoteDescription(answer);
-                } catch {
-                  // Remote description may already be set
+                  remoteDescriptionSet = true;
+                  await flushPending();
+                } catch (err) {
+                  console.warn('setRemoteDescription (caller) failed', err);
                 }
               },
-              onIceCandidate: async candidate => {
-                try {
-                  await service.addIceCandidate(candidate);
-                } catch {
-                  // Candidate may arrive before remote description
-                }
-              },
+              onIceCandidate: applyCandidate,
             },
           );
+
+          await signalingService.sendOffer(currentCallId, offer);
         } else {
-          // Callee flow: listen for offer, create answer, listen for caller ICE candidates
+          // CALLEE: subscribe and wait for offer
           signalingUnsubRef.current = signalingService.subscribeToSignaling(
             currentCallId,
             'callee',
             {
               onOffer: async remoteOffer => {
+                if (remoteDescriptionSet) {
+                  return;
+                }
                 try {
                   await service.setRemoteDescription(remoteOffer);
+                  remoteDescriptionSet = true;
                   const answer = await service.createAnswer();
                   await signalingService.sendAnswer(currentCallId, answer);
-                } catch {
-                  // Offer handling may fail if connection is already set up
+                  await flushPending();
+                } catch (err) {
+                  console.warn('callee offer handling failed', err);
                 }
               },
-              onIceCandidate: async candidate => {
-                try {
-                  await service.addIceCandidate(candidate);
-                } catch {
-                  // Candidate may arrive before remote description
-                }
-              },
+              onIceCandidate: applyCandidate,
             },
           );
         }
-      } catch {
+      } catch (err) {
+        console.warn('startWebRTC failed', err);
         cleanup();
       }
     },

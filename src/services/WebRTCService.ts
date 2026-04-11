@@ -74,10 +74,8 @@ class WebRTCService {
     );
 
     if (isInitiator) {
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: false,
-      });
+      // Use Unified Plan defaults — no legacy constraints
+      const offer = await this.peerConnection.createOffer({});
       await this.peerConnection.setLocalDescription(offer);
       return {
         type: offer.type as 'offer',
@@ -87,6 +85,10 @@ class WebRTCService {
 
     // Not initiator — will set remote description when offer arrives
     return null;
+  }
+
+  hasRemoteDescription(): boolean {
+    return !!this.peerConnection?.remoteDescription;
   }
 
   async setRemoteDescription(
