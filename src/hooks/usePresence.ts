@@ -19,37 +19,27 @@ export function usePresence(uid: string | null, callsign: string): UsePresenceRe
   const [users, setUsers] = useState<User[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const callsignRef = useRef(callsign);
 
-  // Keep callsign ref in sync without triggering re-subscriptions
-  callsignRef.current = callsign;
+  const subscribe = useCallback((currentUid: string) => {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    const unsub = subscribeToUsers(currentUid, updatedUsers => {
+      setUsers(updatedUsers);
+      setRefreshing(false);
+    });
+    unsubscribeRef.current = unsub;
+  }, []);
 
-  const subscribe = useCallback(
-    (currentUid: string) => {
-      // Tear down any existing subscription
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-
-      const unsub = subscribeToUsers(currentUid, (updatedUsers) => {
-        setUsers(updatedUsers);
-        setRefreshing(false);
-      });
-
-      unsubscribeRef.current = unsub;
-    },
-    [],
-  );
-
-  // Set up presence and subscription when uid is available
+  // Set up presence and subscription only when BOTH uid and callsign are set
   useEffect(() => {
-    if (!uid) {
+    if (!uid || !callsign) {
       setUsers([]);
       return;
     }
 
-    goOnline(uid, callsignRef.current);
+    goOnline(uid, callsign);
     subscribe(uid);
 
     return () => {
@@ -59,9 +49,8 @@ export function usePresence(uid: string | null, callsign: string): UsePresenceRe
       }
       goOffline(uid);
     };
-  }, [uid, subscribe]);
+  }, [uid, callsign, subscribe]);
 
-  // Manual refresh: tears down and re-creates the subscription
   const refresh = useCallback(() => {
     if (!uid) {
       return;

@@ -34,9 +34,12 @@ const COLORS = {
 const MONO_FONT = Platform.select({ android: 'monospace', default: 'monospace' });
 
 export default function LobbyScreen({ navigation }: Props) {
-  const [uid, setUid] = useState<string | null>(null);
-  const [callsign, setCallsign] = useState('');
+  // Auth state held as a single object to ensure uid + callsign update atomically
+  const [auth, setAuth] = useState<{ uid: string; callsign: string } | null>(null);
   const [connecting, setConnecting] = useState(false);
+
+  const uid = auth?.uid ?? null;
+  const callsign = auth?.callsign ?? '';
 
   // Track whether we have already navigated to Call, to avoid double navigation
   const hasNavigatedRef = useRef(false);
@@ -57,10 +60,8 @@ export default function LobbyScreen({ navigation }: Props) {
     (async () => {
       const user = await getCurrentUser();
       if (user) {
-        setUid(user.uid);
-        setCallsign(user.callsign);
+        setAuth({ uid: user.uid, callsign: user.callsign });
       } else {
-        // Not authenticated — go back to login
         navigation.replace('Login');
       }
     })();
